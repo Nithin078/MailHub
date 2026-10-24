@@ -1,0 +1,37 @@
+# 1 GB fallback (for example a GCP e2-micro). No Redis. The API drains a Postgres job table itself.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: inbox
+      POSTGRES_PASSWORD: inbox
+      POSTGRES_DB: inbox
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=40"]
+
+  api:
+    build: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://inbox:inbox@postgres:5432/inbox
+      REDIS_URL: ""
+      QUEUE_BACKEND: postgres
+      DEMO_MODE: ${DEMO_MODE:-true}
+      INLINE_WORKER: "true"
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+
+  web:
+    build: ./web
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
